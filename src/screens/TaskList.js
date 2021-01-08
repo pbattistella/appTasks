@@ -5,37 +5,27 @@ import {View, Text, ImageBackground,
 
 import moment from 'moment'
 import 'moment/locale/pt-br' //nesse caso, não vou usar no esse cara no componente, ele vai ser um conf para moment
-import commonStyles from '../commonsStyles'
-import todayImagem from '../../assets/imgs/today.jpg'
 
 import Task from '../components/Task'
 import Icon from 'react-native-vector-icons/FontAwesome'
+import AsyncStorage from "@react-native-community/async-storage"
 
 import AddTask from './AddTask'
 
+import commonStyles from '../commonsStyles'
+import todayImagem from '../../assets/imgs/today.jpg'
+
+const initialState ={showDoneTasks: true, showAddTask:false, visibleTasks:[], tasks:[]}
+
 export default class TaskList extends Component{
     state ={
-        showDoneTasks: true, 
-        showAddTask:false,
-
-
-        visibleTasks:[],
-
-        tasks:[{
-            id: Math.random(),
-            desc: 'Comprar Livro',
-            estimateAt: new Date(),
-            doneAt:new Date()
-        }, {
-            id: Math.random(),
-            desc: 'Ler o Livro',
-            estimateAt: new Date(),
-            doneAt:null
-        }]
+        ... initialState
     }
     //método de ciclo de vida do react
-    componentDidMount = () => {
-        this.filterTasks()
+    componentDidMount = async() => {
+       const stateString = await AsyncStorage.getItem('tasksState')
+       const state = JSON.parse(stateString) || initialState
+       this.setState(state, this.filterTasks)
     }
 
     toggleFilter = () => {
@@ -52,6 +42,9 @@ export default class TaskList extends Component{
         }
 
         this.setState({visibleTasks})
+
+        //salva o objeto state
+        AsyncStorage.setItem('tasksState', JSON.stringify(this.state))
     }
 
     toggleTask = taskId =>{
@@ -84,6 +77,11 @@ export default class TaskList extends Component{
 
     }
 
+    deleteTask = id => {
+        const tasks = this.state.tasks.filter(task => task.id !== id)
+        this.setState({tasks}, this.filterTasks)
+    }
+
     render() {
         const today = moment().locale('pt-br').format('ddd, D, [de] MMMM',)
         return (
@@ -110,7 +108,7 @@ export default class TaskList extends Component{
                 <View style={styles.taskList}>
                     <FlatList data={this.state.visibleTasks} 
                         keyExtractor={item => `${item.id}`} 
-                        renderItem={({item}) => <Task {...item} toggleTask={this.toggleTask}/>}/>
+                        renderItem={({item}) => <Task {...item} onToggleTask={this.toggleTask} onDelete={this.deleteTask}/>}/>
                 </View>
                 <TouchableOpacity style={styles.addButton}
                     onPress={() => this.setState({showAddTask:true})}
